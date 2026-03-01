@@ -1,0 +1,131 @@
+I uploaded: Deal Funnel Data, Work Order Tracker Data in Live monday.com API integration, No caching / no preload, Query-time API calls
+Most candidates will: Import both into monday, Query totals,Return numbers,that’s average.
+I need about how to be top 5%.
+1️⃣ First — Understand the Hidden Evaluation Criteria
+They are not testing CSV handling.
+They are testing: Can you reason across pipeline + execution? Can you detect inconsistencies? Can you explain business risk? Can you surface insights founders didn’t ask for?
+
+Data normalization
+Cross-board reasoning,Visible tool-call traces,Conversational interface,
+This is not a chatbot assignment.
+It’s an agent architecture + systems design test.
+Use this structure:
+
+Frontend (Streamlit / Next.js)
+        ↓
+LLM Agent (Tool-calling enabled)
+        ↓
+Monday API Tool Layer
+        ↓
+Data Normalization Layer
+        ↓
+Response Generator
+
+Backend: FastAPI, Agent:  Ollama tool calling, Frontend: Streamlit (fastest)
+
+They explicitly say: Import CSV as separate boards,Configure column types, Data is messy
+Create: Board 1: Work Orders
+Deal ID,Client,Sector,Revenue,Status,Close Date,
+Board 2: Deals
+Fields:
+Deal Name,Sector,Stage,Deal Value,Created Date,Owner
+Make sure:Dates are actual date columns, Revenue is number column
+Status is dropdown
+
+Step 3 — API Integration (Core Requirement)
+Every query must trigger live API calls
+Do NOT preload or cache, So your agent must Receive question, Decide which board to query, Call monday GraphQL API, Parse results, Normalize data
+
+Return answer
+
+Example: Monday GraphQL Query
+query = """
+{
+  boards(ids: YOUR_BOARD_ID) {
+    items_page(limit: 100) {
+      items {
+        name
+        column_values {
+          column {
+            title
+          }
+          text
+        }
+      }
+    }
+  }
+}
+"""
+The Strategic Angle Most Candidates Will Miss
+we have:
+Deals board → pipeline / potential revenue
+Work Orders board → execution / delivery / actual revenue
+Example:
+Founder asks: “How’s our pipeline in Energy this quarter?”
+Most candidates: “$450k across 8 deals.”
+You: “Energy pipeline totals $450k across 8 deals. However, only 40% of last quarter’s energy deals converted into active work orders, indicating conversion friction.”
+That requires: Checking Deal → Closed Won Matching to Work Orders Calculating conversion %
+That means you can calculate:Conversion rate
+Revenue leakage,Execution backlog,Sector performance gap
+Use requests.post() with API key.
+Step 4 — Data Normalization (This Is Where Most People Fail)
+They explicitly want:
+Handle missing/null, Normalize inconsistent formats, Communicate caveats
+So build a cleaning layer:
+If revenue missing in 30% rows, your agent should say:
+"Note: 30% of records have missing revenue values, so projections may be understated."
+
+Step 5 — Agent Tool Design
+
+Define tools like:
+get_work_orders()
+get_deals()
+calculate_pipeline_health()
+sectoranalysis(sector, quarter)
+Use function-calling / tool-calling LLM.
+
+Example tool schema:
+
+{
+  "name": "get_deals_data",
+  "description": "Fetch live deals data from monday board",
+  "parameters": {}
+}
+
+When founder asks:
+"How’s our pipeline looking for energy sector this quarter?"
+Your agent should:
+Extract:
+sector = energy
+time filter = current quarter
+Call get_deals_data
+Filter by:
+sector == energy
+close_date in Q1 2026
+Aggregate:
+total pipeline value
+stage distribution
+Generate insight
+Step 6 — Founder-Level Intelligence
+Don’t just output numbers.
+Bad answer:
+Total pipeline: $450k
+Good answer:
+Energy sector pipeline for Q1 totals $450k across 12 deals.
+65% is in early-stage qualification, which may indicate pipeline risk.
+Conversion probability suggests ~$180k likely to close this quarter.
+
+They want business reasoning, not SQL output.
+Example:
+Founder asks: “How’s our pipeline in Energy this quarter?”
+Most candidates: “$450k across 8 deals.”
+You: “Energy pipeline totals $450k across 8 deals. However, only 40% of last quarter’s energy deals converted into active work orders, indicating conversion friction.”
+That requires: Checking Deal → Closed Won Matching to Work Orders Calculating conversion %
+ Execution Risk Detection
+From Work Orders:
+Count overdue projects Compare projected vs actual revenue, Detect sector overload
+Return: “Energy sector execution load is 35% above average, which may impact delivery timelines.”
+Now you look like someone thinking at scale.
+Step 7 — Visible Tool Call Traces (Very Important)
+They want Show visible API/tool-call traces
+So display:Tool Called: get_deals_data(), API Request: boards(ids=12345),Records Retrieved: 87,Filter Applied: sector=Energy, close_date in Q1
